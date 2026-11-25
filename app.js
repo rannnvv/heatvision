@@ -1,4 +1,3 @@
-import { YOLO, annotate } from "@ultralytics/yolo";
 import { t, getLang } from "./i18n.js";
 
 const CONFIG = Object.freeze({
@@ -8,6 +7,18 @@ const CONFIG = Object.freeze({
   clearAfterMisses: 10,
   maxLog: 30,
 });
+
+let lib = null;
+async function getLib() {
+  if (lib) return lib;
+  try {
+    lib = await import("@ultralytics/yolo");
+  } catch (error) {
+    console.error("Library YOLO gagal dimuat:", error);
+    throw new Error("library YOLO tidak bisa diunduh dari esm.sh. Periksa koneksi internet lalu muat ulang halaman.");
+  }
+  return lib;
+}
 
 const $ = (id) => document.getElementById(id);
 const ids = ["webcam","image-preview","overlay","preview-stage","empty-state","status-indicator","status-text","model-state","device-state","preview-mode","preview-hint-text","model-path","model-file","model-file-label","load-model","start-camera","stop-camera","camera-facing","choose-image","image-file","clear-preview","confidence","confidence-value","detection-count","detection-badge","inference-time","fps-value","detection-list","risk-banner","risk-label","risk-sub","risk-score","needle","ack-alarm","snapshot","fullscreen","alert-conf","alert-conf-value","confirm-frames","confirm-frames-value","keywords","sound-toggle","vibrate-toggle","notify-toggle","autosnap-toggle","test-alarm","peak-conf","alert-count","uptime","trend","log-list","export-log","clear-log","clock"];
@@ -215,6 +226,7 @@ async function loadModel() {
     const file = el["model-file"].files?.[0];
     const path = el["model-path"].value.trim() || CONFIG.defaultModelPath;
     const src = file || new URL(path.replace(/^\.\//, ""), import.meta.url).href;
+    const { YOLO } = await getLib();
     state.model = await YOLO.load(src, { device: "auto" });
     el["model-state"].textContent = "Model siap";
     el["device-state"].textContent = `Perangkat ${String(state.model.device || "auto").toUpperCase()}`;
@@ -272,7 +284,7 @@ async function runCameraLoop() {
   if (!state.running || !state.model) return;
   try {
     const results = await state.model.predict(el.webcam, predictOptions());
-    await annotate(el.overlay, el.webcam, results, CONFIG.annotation);
+    await lib.annotate(el.overlay, el.webcam, results, CONFIG.annotation);
     updateDetections(results, performance.now());
     evaluate(Array.isArray(results?.boxes) ? results.boxes : []);
   } catch (error) {
@@ -301,7 +313,7 @@ async function analyzeImage(file) {
     try {
       el["image-preview"].src = state.imageUrl; setStageAspect(image.naturalWidth, image.naturalHeight); showSource("image");
       const results = await state.model.predict(image, predictOptions());
-      await annotate(el.overlay, image, results, CONFIG.annotation);
+      await lib.annotate(el.overlay, image, results, CONFIG.annotation);
       updateDetections(results);
       state.streak = Number(el["confirm-frames"].value) - 1; evaluate(Array.isArray(results?.boxes) ? results.boxes : []);
       setStatus("Analisis gambar selesai.", "ready");
