@@ -1,7 +1,8 @@
-import { t, getLang } from "./i18n.js";
+let getLang = () => "id";
+import("./i18n.js").then((m) => { getLang = m.getLang; }).catch(() => {});
 
 const CONFIG = Object.freeze({
-  defaultModelPath: "models/yolo26n.onnx",
+  defaultModelPath: "models/best.onnx",
   annotation: { lineWidth: 3, font: "600 14px Figtree, sans-serif", labels: true, keypoints: true },
   trendLength: 60,
   clearAfterMisses: 10,
@@ -30,7 +31,7 @@ const state = {
   alerts: 0, log: [], startedAt: 0, alarmTimer: 0, acked: false, audio: null, wakeLock: null,
 };
 
-const SETTINGS = ["confidence", "alert-conf", "confirm-frames", "keywords", "camera-facing", "model-path"];
+const SETTINGS = ["confidence", "alert-conf", "confirm-frames", "keywords", "camera-facing"];
 const TOGGLES = ["sound-toggle", "vibrate-toggle", "autosnap-toggle"];
 function loadSettings() {
   try {
@@ -332,7 +333,7 @@ el["image-file"].addEventListener("change", (e) => { const f = e.target.files?.[
 el["model-file"].addEventListener("change", (e) => { el["model-file-label"].textContent = e.target.files?.[0]?.name ?? "Pilih file .onnx"; });
 el["camera-facing"].addEventListener("change", () => { saveSettings(); if (state.running) startCamera(); });
 for (const k of ["confidence", "alert-conf", "confirm-frames"]) el[k].addEventListener("input", () => { syncReadouts(); saveSettings(); drawTrend(); });
-for (const k of ["keywords", "model-path", ...TOGGLES]) el[k].addEventListener("change", saveSettings);
+for (const k of ["keywords", ...TOGGLES]) el[k].addEventListener("change", saveSettings);
 el["notify-toggle"].addEventListener("change", async () => {
   if (!el["notify-toggle"].checked) return;
   if (!("Notification" in window)) { el["notify-toggle"].checked = false; return setStatus("Browser ini tidak mendukung notifikasi.", "error"); }
